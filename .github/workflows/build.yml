@@ -24,7 +24,7 @@ jobs:
           large-packages: true
           swap-storage: true
 
-      # 2. 手动安装所有依赖 (解决 user 权限报错的根源)
+      # 2. 手动安装所有依赖
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -35,13 +35,14 @@ jobs:
             zlib1g-dev libgstreamer1.0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
             libffi-dev libtool automake autoconf libltdl-dev
 
-      # 3. 安装 Buildozer (打包工具)
+      # 3. 安装 Buildozer 和旧版 Cython (关键修复！)
+      # 必须强制安装 cython<3，因为新版 Cython 不支持旧代码里的 long 类型
       - name: Install Buildozer
         run: |
           pip3 install --upgrade pip
-          pip3 install buildozer cython
+          pip3 install buildozer "cython<3"
 
-      # 4. 开始打包 (直接运行命令，不再通过 Actions 包装)
+      # 4. 开始打包
       - name: Build with Buildozer
         run: |
           yes | buildozer android debug
