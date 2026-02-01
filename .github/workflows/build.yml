@@ -7,13 +7,14 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # 关键修改：强制使用 Ubuntu 22.04 (旧版稳定系统)
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. 清理空间 (防止打包到一半空间不足)
+      # 1. 清理空间
       - name: Free Disk Space
         uses: jlumbroso/free-disk-space@main
         with:
@@ -24,7 +25,7 @@ jobs:
           large-packages: true
           swap-storage: true
 
-      # 2. 手动安装所有依赖
+      # 2. 安装系统依赖
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -33,10 +34,10 @@ jobs:
             ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
             libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
             zlib1g-dev libgstreamer1.0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-            libffi-dev libtool automake autoconf libltdl-dev
+            libffi-dev libtool automake autoconf libltdl-dev \
+            libssl-dev zip unzip
 
-      # 3. 安装 Buildozer 和旧版 Cython (关键修复！)
-      # 必须强制安装 cython<3，因为新版 Cython 不支持旧代码里的 long 类型
+      # 3. 安装 Buildozer (降级 Cython 修复 long 类型报错)
       - name: Install Buildozer
         run: |
           pip3 install --upgrade pip
@@ -47,7 +48,7 @@ jobs:
         run: |
           yes | buildozer android debug
 
-      # 5. 上传结果
+      # 5. 上传 APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
