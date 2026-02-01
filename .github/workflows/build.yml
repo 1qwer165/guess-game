@@ -13,7 +13,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. 清理空间
       - name: Free Disk Space
         uses: jlumbroso/free-disk-space@main
         with:
@@ -24,7 +23,6 @@ jobs:
           large-packages: true
           swap-storage: true
 
-      # 2. 安装基础依赖 (最稳妥的组合)
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -36,20 +34,19 @@ jobs:
             libssl-dev zip unzip \
             libsqlite3-dev libbz2-dev liblzma-dev libncurses5-dev tk-dev uuid-dev
 
-      # 3. 安装工具 (锁定旧版 Cython)
-      - name: Install Buildozer
+      - name: Install Buildozer & P4A
         run: |
           pip3 install --upgrade pip
           pip3 install "cython<3"
-          pip3 install buildozer
+          pip3 install git+https://github.com/kivy/buildozer.git
+          pip3 install git+https://github.com/kivy/python-for-android.git
 
-      # 4. 开始打包 (⚠️注意：我删掉了 yes | 命令)
-      # 这样如果有错误，它会直接停下来报错，而不是无限刷屏
+      # 关键修改：用 'yes | head -n 1000' 来智能同意协议
+      # 既能通过验证，又不会导致日志爆炸
       - name: Build with Buildozer
         run: |
-          buildozer android debug
+          yes | head -n 1000 | buildozer android debug
 
-      # 5. 上传 APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
