@@ -24,7 +24,7 @@ jobs:
           large-packages: true
           swap-storage: true
 
-      # 2. 安装全套系统依赖 (新增了 sqlite3, bz2, lzma 等关键库)
+      # 2. 安装基础依赖 (最稳妥的组合)
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -36,20 +36,18 @@ jobs:
             libssl-dev zip unzip \
             libsqlite3-dev libbz2-dev liblzma-dev libncurses5-dev tk-dev uuid-dev
 
-      # 3. 安装最新开发版 Buildozer (解决新系统兼容性)
-      - name: Install Buildozer & P4A
+      # 3. 安装工具 (锁定旧版 Cython)
+      - name: Install Buildozer
         run: |
           pip3 install --upgrade pip
-          # 强制安装 Cython 旧版
           pip3 install "cython<3"
-          # 强制从 GitHub 安装最新开发版，修复 OpenSSL 报错
-          pip3 install git+https://github.com/kivy/buildozer.git
-          pip3 install git+https://github.com/kivy/python-for-android.git
+          pip3 install buildozer
 
-      # 4. 开始打包
+      # 4. 开始打包 (⚠️注意：我删掉了 yes | 命令)
+      # 这样如果有错误，它会直接停下来报错，而不是无限刷屏
       - name: Build with Buildozer
         run: |
-          yes | buildozer android debug
+          buildozer android debug
 
       # 5. 上传 APK
       - name: Upload APK
