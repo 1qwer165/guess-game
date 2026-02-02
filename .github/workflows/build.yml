@@ -37,27 +37,25 @@ jobs:
       - name: Install Buildozer & P4A
         run: |
           pip3 install --upgrade pip
-          # 1. 锁定 Cython 版本，避免 Python 3 语法导致的构建错误
           pip3 install "cython<3"
-          # 2. 安装最新开发版 Buildozer，修复部分环境兼容性
           pip3 install git+https://github.com/kivy/buildozer.git
           pip3 install git+https://github.com/kivy/python-for-android.git
 
-      # ⚔️ 核心修复步骤：三阶段构建法 ⚔️
-      # 1. 第一遍跑：目的是下载源码。即使报错（|| true）也不停，让我们有机会修文件。
-      # 2. 手术修补：找到那个编码错误的 badsyntax 文件，给它贴上“我是 Latin-1”的标签。
-      # 3. 第二遍跑：源码修好了，这次利用缓存直接通关！
-      - name: Build with Buildozer (Auto-Patch)
+      # 关键修改：【三步走策略】
+      # 1. 先试运行 (|| true) 让它下载源码，即使报错也不停
+      # 2. 找到那个编码错误的 badsyntax_pep3120.py，强行插入 latin-1 声明
+      # 3. 再次运行，这次就能顺利编译通过了！
+      - name: Build with Buildozer (Fix & Build)
         run: |
-          echo ">>> 阶段 1/3: 尝试下载并构建环境 (预期会失败，忽略错误)..."
+          echo ">>> 阶段 1: 尝试构建并下载依赖 (允许失败)..."
           { yes || true; } | buildozer android debug || true
 
-          echo ">>> 阶段 2/3: 正在给 CPython 源码做微创手术..."
-          # 搜索 .buildozer 目录，找到那个导致崩溃的文件，强制插入编码声明
+          echo ">>> 阶段 2: 正在修补 CPython 源码编码问题..."
+          # 在 .buildozer 目录里找到那个捣乱的文件，并在第一行插入编码声明
           find .buildozer -type f -name "badsyntax_pep3120.py" -exec sed -i '1s;^;# -*- coding: latin-1 -*-\n;' {} +
-          echo ">>> 手术完成。"
+          echo ">>> 补丁已应用。"
 
-          echo ">>> 阶段 3/3: 再次构建 (这次畅通无阻)..."
+          echo ">>> 阶段 3: 恢复构建 (这次一定会成功)..."
           { yes || true; } | buildozer android debug
 
       - name: Upload APK
