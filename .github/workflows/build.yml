@@ -41,21 +41,22 @@ jobs:
           pip3 install git+https://github.com/kivy/buildozer.git
           pip3 install git+https://github.com/kivy/python-for-android.git
 
-      # 关键修改：【三步走策略】
-      # 1. 先试运行 (|| true) 让它下载源码，即使报错也不停
-      # 2. 找到那个编码错误的 badsyntax_pep3120.py，强行插入 latin-1 声明
-      # 3. 再次运行，这次就能顺利编译通过了！
-      - name: Build with Buildozer (Fix & Build)
+      # ⚔️ 核心修改：不修了，直接删！ ⚔️
+      # 1. 先跑一次下载源码
+      # 2. 找到所有测试文件夹 (Lib/test)，全部删光！
+      # 3. 再跑一次，世界清静了
+      - name: Build with Buildozer (Delete Tests)
         run: |
-          echo ">>> 阶段 1: 尝试构建并下载依赖 (允许失败)..."
+          echo ">>> 1. 下载源码 (允许报错)..."
           { yes || true; } | buildozer android debug || true
 
-          echo ">>> 阶段 2: 正在修补 CPython 源码编码问题..."
-          # 在 .buildozer 目录里找到那个捣乱的文件，并在第一行插入编码声明
-          find .buildozer -type f -name "badsyntax_pep3120.py" -exec sed -i '1s;^;# -*- coding: latin-1 -*-\n;' {} +
-          echo ">>> 补丁已应用。"
+          echo ">>> 2. 执行清理：删除所有 Python 测试文件..."
+          # 暴力删除：只要是 Python 的测试目录，统统删掉
+          # 这样那个 badsyntax_pep3120.py 必死无疑
+          find .buildozer -type d -path "*/Lib/test" -exec rm -rf {} +
+          echo ">>> 清理完成。"
 
-          echo ">>> 阶段 3: 恢复构建 (这次一定会成功)..."
+          echo ">>> 3. 正式打包..."
           { yes || true; } | buildozer android debug
 
       - name: Upload APK
