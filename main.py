@@ -11,7 +11,7 @@ from kivy.config import Config
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle, Line, RoundedRectangle
 from kivy.core.audio import SoundLoader
-from kivy.properties import StringProperty, NumericProperty, OptionProperty
+from kivy.properties import StringProperty, NumericProperty
 import json
 import os
 import random
@@ -86,7 +86,7 @@ class MenuItem(ButtonBehavior, BoxLayout):
 
 
 class SettingsPopup(ModalView):
-    """设置弹窗 (修改版：支持两种模式切换)"""
+    """设置弹窗 (支持两种模式切换)"""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -232,61 +232,92 @@ class MainMenuScreen(Screen):
         self.rect.size = instance.size
 
 
-# ==================== 3. 题库选择界面 ====================
+# ==================== 3. 题库选择界面 (新增随机挑战) ====================
 class QuestionBankScreen(Screen):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        with self.canvas.before:
-            Color(1, 1, 1, 1)
-            self.rect = Rectangle(size=self.size, pos=self.pos)
-        self.bind(size=self._update_rect, pos=self._update_rect)
+ def __init__(self, **kwargs):
+  super().__init__(**kwargs)
+  with self.canvas.before:
+   Color(1, 1, 1, 1)
+   self.rect = Rectangle(size=self.size, pos=self.pos)
+  self.bind(size=self._update_rect, pos=self._update_rect)
 
-        main_layout = BoxLayout(orientation='vertical', spacing=20, padding=30)
-        self.grid = GridLayout(cols=2, spacing=20, padding=10, size_hint=(1, 0.8))
-        self.quiz_data = self.load_data()
-        self.create_buttons()
+  main_layout = BoxLayout(orientation='vertical', spacing=20, padding=30)
 
-        back_btn = Button(text='返回', size_hint=(1, 0.1), background_color=(0.7, 0.2, 0.2, 1),
-                          font_name=CHINESE_FONT if CHINESE_FONT else 'Roboto')
-        back_btn.bind(on_press=lambda x: setattr(self.manager, 'current', 'main_menu'))
+  # 标题区域
+  main_layout.add_widget(Label(text='请选择题库类别', font_size=36, color=(0, 0, 0, 1), size_hint=(1, 0.1),
+                               font_name=CHINESE_FONT if CHINESE_FONT else 'Roboto'))
 
-        main_layout.add_widget(Label(text='请选择题库类别', font_size=36, color=(0, 0, 0, 1), size_hint=(1, 0.1),
-                                     font_name=CHINESE_FONT if CHINESE_FONT else 'Roboto'))
-        main_layout.add_widget(self.grid)
-        main_layout.add_widget(back_btn)
-        self.add_widget(main_layout)
+  # 题目网格
+  self.grid = GridLayout(cols=2, spacing=20, padding=10, size_hint=(1, 0.8))
+  self.quiz_data = self.load_data()
+  self.create_buttons()
 
-    def _update_rect(self, instance, value):
-        self.rect.pos = instance.pos
-        self.rect.size = instance.size
+  main_layout.add_widget(self.grid)
 
-    def load_data(self):
-        try:
-            if os.path.exists('words.json'):
-                with open('words.json', 'r', encoding='utf-8') as f:
-                    return json.load(f)
-        except:
-            pass
-        return {
-            "动画类": ["千与千寻", "龙猫", "疯狂动物城", "你的名字"],
-            "角色类": ["孙悟空", "哈利·波特", "蜘蛛侠", "钢铁侠"],
-            "体育类": ["篮球", "足球", "乒乓球", "游泳"],
-            "娱乐圈": ["电影", "电视剧", "综艺", "明星"],
-            "成语类": ["画蛇添足", "守株待兔", "叶公好龙", "亡羊补牢"]
-        }
+  # 返回按钮
+  back_btn = Button(text='返回主菜单', size_hint=(1, 0.1), background_color=(0.7, 0.2, 0.2, 1),
+                    font_name=CHINESE_FONT if CHINESE_FONT else 'Roboto')
+  back_btn.bind(on_press=lambda x: setattr(self.manager, 'current', 'main_menu'))
+  main_layout.add_widget(back_btn)
 
-    def create_buttons(self):
-        self.grid.clear_widgets()
-        for cat in self.quiz_data.keys():
-            btn = Button(text=cat, font_size=28, color=(0, 0, 0, 1), background_color=(0.9, 0.9, 0.9, 1),
+  self.add_widget(main_layout)
+
+ def _update_rect(self, instance, value):
+  self.rect.pos = instance.pos
+  self.rect.size = instance.size
+
+ def load_data(self):
+  try:
+   if os.path.exists('words.json'):
+    with open('words.json', 'r', encoding='utf-8') as f:
+     return json.load(f)
+  except:
+   pass
+  # 默认备用数据
+  return {"默认题库": ["苹果", "香蕉", "西瓜"]}
+
+ def create_buttons(self):
+     self.grid.clear_widgets()
+
+     # === 1. 🎲 随机大挑战按钮 (保持不变) ===
+     btn_random = Button(text="随机大挑战", font_size=28, color=(1, 1, 1, 1),
+                         background_normal='', background_color=(0.6, 0.2, 0.8, 1),
                          font_name=CHINESE_FONT if CHINESE_FONT else 'Roboto')
-            btn.bind(on_press=lambda x, c=cat: self.select_category(c))
-            self.grid.add_widget(btn)
+     btn_random.bind(on_press=self.start_random_challenge)
+     self.grid.add_widget(btn_random)
 
-    def select_category(self, category):
-        game_screen = App.get_running_app().root.get_screen('game')
-        game_screen.set_category(category, self.quiz_data[category])
-        App.get_running_app().root.current = 'game'
+     # === 2. 普通分类按钮 (这里是修复的重点) ===
+     for cat in self.quiz_data.keys():
+         btn = Button(text=cat, font_size=28, color=(0, 0, 0, 1),
+                      background_normal='', background_color=(0.9, 0.9, 0.9, 1),
+                      font_name=CHINESE_FONT if CHINESE_FONT else 'Roboto')
+
+         # 🔴 修复前 (报错的原因):
+         # btn.bind(on_press=lambda x, c=cat: self.select_category(c))
+
+         # 🟢 修复后 (正确写法):
+         # 我们不仅要传类别名 c，还要把对应的题目列表 q 也传进去！
+         questions_list = self.quiz_data[cat]
+         btn.bind(on_press=lambda x, c=cat, q=questions_list: self.select_category(c, q))
+
+         self.grid.add_widget(btn)
+ def start_random_challenge(self, instance):
+  """处理随机挑战逻辑"""
+  all_questions = []
+  # 1. 遍历所有分类，把题目加到一个大列表里
+  for category_list in self.quiz_data.values():
+   all_questions.extend(category_list)
+
+  # 2. 去重 (可选，防止有些词在不同分类重复出现)
+  all_questions = list(set(all_questions))
+
+  # 3. 开始游戏
+  self.select_category("随机大挑战", all_questions)
+
+ def select_category(self, category_name, questions):
+  game_screen = App.get_running_app().root.get_screen('game')
+  game_screen.set_category(category_name, questions)
+  App.get_running_app().root.current = 'game'
 
 
 # ==================== 4. "我的"界面 ====================
@@ -332,15 +363,16 @@ class MyPageScreen(Screen):
         self.rect.size = instance.size
 
 
-# ==================== 5. 游戏界面 (支持两种模式) ====================
+# ==================== 5. 游戏界面 (含3-2-1倒计时) ====================
 class GameScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.questions = []
         self.score = 0
-        self.timer_val = 0  # 记录时间 (剩余时间 或 已用时间)
+        self.timer_val = 0
         self.timer_event = None
         self.sensor_event = None
+        self.countdown_event = None  # 倒计时事件
         self.is_cooldown = False
         self.app = App.get_running_app()
 
@@ -353,9 +385,9 @@ class GameScreen(Screen):
 
         main_layout = BoxLayout(orientation='vertical', spacing=10, padding=30)
 
-        # 顶部提示栏 (显示倒计时 或 目标进度)
+        # 顶部提示栏
         self.timer_lbl = Label(
-            text="",
+            text="准备...",
             font_size=40,
             color=(1, 0, 0, 1),
             size_hint=(1, 0.1),
@@ -406,34 +438,70 @@ class GameScreen(Screen):
         self.border.rectangle = (instance.x, instance.y, instance.width, instance.height)
 
     def on_enter(self):
-        self.start_sensor()
+        # === 核心修改：进入时不直接开始，而是进入“准备阶段” ===
+        self.q_lbl.text = "请将手机\n放额头"
+        self.q_lbl.font_size = 50
+        self.timer_lbl.text = "准备中..."
+
+        # 1. 禁用所有操作
+        self.wrong_btn.disabled = True
+        self.right_btn.disabled = True
+        self.stop_timer()
+        self.stop_sensor()
+
+        # 2. 启动 3-2-1 倒计时
+        self.countdown_val = 3
+        # 1秒后开始倒数
+        if self.countdown_event: self.countdown_event.cancel()
+        self.countdown_event = Clock.schedule_interval(self.update_countdown, 1)
 
     def on_leave(self):
-        self.stop_sensor();
+        self.stop_sensor()
         self.stop_timer()
+        # 离开时也要把倒计时关了
+        if self.countdown_event: self.countdown_event.cancel()
+
+    def update_countdown(self, dt):
+        """处理 3-2-1 逻辑"""
+        if self.countdown_val > 0:
+            self.q_lbl.text = str(self.countdown_val)
+            self.q_lbl.font_size = 150  # 字体超大，醒目
+            self.countdown_val -= 1
+        else:
+            self.q_lbl.text = "GO!"
+            self.q_lbl.font_size = 100
+            # 停止倒计时计时器
+            if self.countdown_event: self.countdown_event.cancel()
+            # 0.5秒后正式开始游戏
+            Clock.schedule_once(self.start_game_logic, 0.5)
+
+    def start_game_logic(self, dt):
+        """正式开始游戏的逻辑"""
+        self.q_lbl.font_size = 60
+        self.wrong_btn.disabled = False
+        self.right_btn.disabled = False
+
+        # 初始化游戏数据
+        self.app = App.get_running_app()
+        if self.app.game_mode == 'time':
+            self.timer_val = self.app.target_value
+        else:
+            self.timer_val = 0
+
+        self.update_display_text()
+        self.show_question()
+        self.start_sensor()  # 开启重力感应
+
+        # 开启游戏主循环
+        if self.timer_event: self.timer_event.cancel()
+        self.timer_event = Clock.schedule_interval(self.update_time, 0.1)
 
     def set_category(self, name, questions):
         self.questions = questions.copy()
         random.shuffle(self.questions)
         self.score = 0
         self.current_index = 0
-        self.wrong_btn.disabled = False
-        self.right_btn.disabled = False
-
-        # === 根据模式初始化 ===
-        self.app = App.get_running_app()
-        if self.app.game_mode == 'time':
-            # 倒计时模式： timer_val 代表剩余时间
-            self.timer_val = self.app.target_value
-            self.update_display_text()
-        else:
-            # 竞速模式： timer_val 代表已经花的时间 (0开始加)
-            self.timer_val = 0
-            self.update_display_text()
-
-        self.show_question()
-        if self.timer_event: self.timer_event.cancel()
-        self.timer_event = Clock.schedule_interval(self.update_time, 0.1)  # 0.1秒刷新一次更流畅
+        # 这里不需要在这里开启timer了，移到 on_enter 处理
 
     def show_question(self):
         if self.current_index >= len(self.questions): random.shuffle(self.questions); self.current_index = 0
@@ -441,26 +509,21 @@ class GameScreen(Screen):
 
     def update_time(self, dt):
         if self.app.game_mode == 'time':
-            # 倒计时模式
             self.timer_val -= dt
             if self.timer_val <= 0:
                 self.timer_val = 0
                 self.game_over()
         else:
-            # 竞速模式 (正向计时)
             self.timer_val += dt
 
         self.update_display_text()
 
     def update_display_text(self):
-        """更新顶部状态栏文字"""
         if self.app.game_mode == 'time':
-            # 显示：剩余 59.5 秒
             self.timer_lbl.text = f"{int(self.timer_val)}秒"
         else:
-            # 显示：已答 3/10 题 (12.5秒)
             target = self.app.target_value
-            self.timer_lbl.text = f"进度: {self.score}/{target}  ({self.timer_val:.1f}秒)"
+            self.timer_lbl.text = f"进度: {selzhehszf.score}/{target}  ({self.timer_val:.1f}秒)"
 
     def stop_timer(self):
         if self.timer_event: self.timer_event.cancel(); self.timer_event = None
@@ -472,7 +535,6 @@ class GameScreen(Screen):
         self.score += 1
         self.current_index += 1
 
-        # 竞速模式下，检查是否达标
         if self.app.game_mode == 'score' and self.score >= self.app.target_value:
             self.game_over()
             return
@@ -498,6 +560,7 @@ class GameScreen(Screen):
             msg = f"挑战成功!\n用时: {self.timer_val:.1f} 秒"
 
         self.q_lbl.text = msg
+        self.q_lbl.font_size = 50
         Clock.schedule_once(lambda dt: setattr(self.manager, 'current', 'question_bank'), 4)
 
     def start_sensor(self):
@@ -536,11 +599,7 @@ class GameScreen(Screen):
 
 
 class GuessGameApp(App):
-    # 定义全局变量 (模式 和 目标值)
-    # game_mode: 'time' (倒计时) 或 'score' (竞速/题数)
     game_mode = StringProperty('time')
-    # target_value: 如果是 time 模式，这里存的是秒数 (如 60)
-    #               如果是 score 模式，这里存的是题数 (如 10)
     target_value = NumericProperty(60)
 
     def build(self):
